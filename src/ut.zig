@@ -18,7 +18,7 @@ test "basic alloc" {
 
 test "resize it" {
     const buf: []u8 = iso.alloc(u8, 16) catch @panic("test failure");
-    if (iso.resize(buf, 1024))
+    if (!iso.resize(buf, 1024))
         @panic("test failure");
     iso.free(buf);
 }
