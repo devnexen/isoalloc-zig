@@ -18,8 +18,7 @@ fn isoallocAlloc(_: *anyopaque, len: usize, ptr_align: u8, _: usize) ?[*]u8 {
         return null;
     }
 
-    var p: [*]u8 = @as([*]u8, @ptrCast(c.iso_alloc(len)));
-    return p;
+    return @as([*]u8, @ptrCast(c.iso_alloc(len)));
 }
 
 fn isoallocResize(_: *anyopaque, p: []u8, len_align: u8, len: usize, _: usize) bool {
