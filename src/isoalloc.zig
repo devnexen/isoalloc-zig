@@ -5,36 +5,37 @@ const math = std.math;
 const debug = std.debug;
 const Allocator = mem.Allocator;
 
-var isoalloc_allocator_fn = Allocator.init([*]u8, isoallocAlloc, isoallocResize, isoallocFree); //Allocator{ .allocFn = isoallocAlloc, .resizeFn = isoallocResize };
+var isoalloc_vtable = Allocator.VTable{ .alloc = isoallocAlloc, .resize = isoallocResize, .free = isoallocFree };
+var isoalloc_allocator_fn: Allocator = Allocator{ .ptr = undefined, .vtable = &isoalloc_vtable };
 pub export const isoalloc_allocator = &isoalloc_allocator_fn;
 
-fn isoallocAlloc(len: usize, ptr_align: u29, _: u29, _: usize) Allocator.Error![]u8 {
+fn isoallocAlloc(_: *anyopaque, len: usize, ptr_align: u8, _: usize) ?[*]u8 {
     if (len == 0)
-        return error.OutOfMemory;
+        return null;
     // just for the principle ..
     if (!math.isPowerOfTwo(ptr_align)) {
         debug.print("alignment must be a power of 2 {}", .{ptr_align});
-        return error.OutOfMemory;
+        return null;
     }
 
-    var p: [*]u8 = @ptrCast([*]u8, c.iso_alloc(len));
-    return p[0..len];
+    var p: [*]u8 = @as([*]u8, @ptrCast(c.iso_alloc(len)));
+    return p;
 }
 
-fn isoallocResize(p: []u8, _: u29, len: usize, len_align: u29, _: usize) Allocator.Error!usize {
+fn isoallocResize(_: *anyopaque, p: []u8, len_align: u8, len: usize, _: usize) bool {
     if (len == 0) {
         c.iso_free(p.ptr);
-        return 0;
+        return false;
     }
 
     if (len <= p.len)
-        return mem.alignAllocLen(p.len, len, len_align);
+        return mem.alignAllocLen(p.len, len, len_align) > 0;
     const new_len = c.iso_chunksz(p.ptr);
     if (new_len <= p.len)
-        return mem.alignAllocLen(p.len, new_len, len_align);
-    return error.OutOfMemory;
+        return mem.alignAllocLen(p.len, new_len, len_align) > 0;
+    return false;
 }
 
-fn isoallocFree(p: []u8, _: u29, _: usize) void {
+fn isoallocFree(_: *anyopaque, p: []u8, _: u8, _: usize) void {
     c.iso_free(p.ptr);
 }
